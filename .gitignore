@@ -9,3 +9,4 @@ backups/
 output/
 .streamlit/secrets.toml
 service-account*.json
+backup_last_good/
