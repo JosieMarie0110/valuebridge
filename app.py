@@ -1235,7 +1235,7 @@ def refresh_requests() -> None:
     except DatabaseError:
         st.session_state.requests = []
         st.session_state.database_connected = False
-        st.session_state.database_message = "Local preview mode"
+        st.session_state.database_message = "Beta v1.0"
 
     st.session_state.requests_loaded = True
 
