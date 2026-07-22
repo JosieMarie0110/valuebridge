@@ -1534,12 +1534,12 @@ def render_dashboard() -> None:
     render_html(
         """
         <section class="hero">
-            <h1>Turn dealer and member needs into stronger requests.</h1>
+            <h1>Turn sales insight into decision-ready business cases.</h1>
 
             <p>
-                Capture the business problem, quantify the dealer or member
-                impact, identify the appropriate stakeholder, and prepare a
-                clear cross-functional conversation.
+                Capture customer demand, quantify commercial impact, align the
+                right cross-functional stakeholders, and prepare a clear request
+                for action.
             </p>
         </section>
         """
