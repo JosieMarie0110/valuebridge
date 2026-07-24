@@ -4,12 +4,13 @@ from typing import Any
 
 import streamlit as st
 
+from components.styles import apply_styles
 from database import (
     DatabaseError,
-    create_request,
     list_requests,
     test_connection,
 )
+from pages.business_case import render_business_case
 
 
 st.set_page_config(
@@ -19,71 +20,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-
 logging.basicConfig(level=logging.INFO)
-
-
-REQUEST_CATEGORIES = {
-    "Dealer & F&I Enrollment": [
-        "Enrollment workflow improvement",
-        "F&I presentation support",
-        "Dealer activation issue",
-        "Enrollment exception",
-        "Dealer training or adoption need",
-        "Multi-rooftop enrollment request",
-    ],
-    "Partner Performance & Retention": [
-        "Dealer performance reporting",
-        "Low program utilization",
-        "Dealer retention risk",
-        "Dealer follow-up automation",
-        "Partner engagement improvement",
-        "Regional performance visibility",
-    ],
-    "Member Payment Experience": [
-        "Payment schedule concern",
-        "Payment posting issue",
-        "Member portal improvement",
-        "Loan payoff experience",
-        "Member communication improvement",
-        "Cancellation or retention concern",
-    ],
-    "Technology & Integrations": [
-        "DMS integration",
-        "CRM integration",
-        "Lender integration",
-        "API enhancement",
-        "Data synchronization",
-        "Partner portal enhancement",
-        "Electronic signature improvement",
-    ],
-    "Operations & Support": [
-        "Dealer support process",
-        "Member support process",
-        "Manual workflow automation",
-        "Escalation process improvement",
-        "Operational reporting",
-        "Training process improvement",
-    ],
-    "Compliance & Risk": [
-        "Consumer disclosure requirement",
-        "Payment compliance requirement",
-        "Data privacy requirement",
-        "Access-control change",
-        "Audit or documentation need",
-        "Complaint management concern",
-    ],
-}
 
 
 STAKEHOLDER_ROLES = {
     "Dealer Sales": {
-        "roles": [
-            "Dealer Development Manager",
-            "Regional Sales Manager",
-            "Sales Director",
-            "VP of Sales",
-        ],
         "priority": (
             "Dealer growth, enrollment performance, partner relationships, "
             "and revenue opportunity"
@@ -103,12 +44,6 @@ STAKEHOLDER_ROLES = {
         ],
     },
     "Dealer Success": {
-        "roles": [
-            "Dealer Success Manager",
-            "Dealer Support Manager",
-            "Regional Dealer Manager",
-            "Training Manager",
-        ],
         "priority": (
             "Dealer activation, adoption, training, support quality, "
             "and consistent program utilization"
@@ -128,12 +63,6 @@ STAKEHOLDER_ROLES = {
         ],
     },
     "Member Services": {
-        "roles": [
-            "Member Services Manager",
-            "Customer Care Manager",
-            "Escalation Manager",
-            "Member Experience Lead",
-        ],
         "priority": (
             "Member satisfaction, clear communication, issue resolution, "
             "and retention"
@@ -153,12 +82,6 @@ STAKEHOLDER_ROLES = {
         ],
     },
     "Payment Operations": {
-        "roles": [
-            "Payment Operations Manager",
-            "Operations Analyst",
-            "Processing Manager",
-            "Reconciliation Lead",
-        ],
         "priority": (
             "Payment accuracy, processing reliability, reconciliation, "
             "and operational efficiency"
@@ -178,12 +101,6 @@ STAKEHOLDER_ROLES = {
         ],
     },
     "Product": {
-        "roles": [
-            "Product Manager",
-            "Product Owner",
-            "Head of Product",
-            "Product Operations",
-        ],
         "priority": (
             "Roadmap alignment, repeatable dealer or member demand, "
             "and measurable product value"
@@ -203,12 +120,6 @@ STAKEHOLDER_ROLES = {
         ],
     },
     "Engineering": {
-        "roles": [
-            "Software Engineer",
-            "Engineering Manager",
-            "Technical Lead",
-            "Solutions Architect",
-        ],
         "priority": (
             "Clear requirements, secure implementation, system reliability, "
             "and maintainability"
@@ -228,12 +139,6 @@ STAKEHOLDER_ROLES = {
         ],
     },
     "Compliance & Legal": {
-        "roles": [
-            "Compliance Manager",
-            "Legal Counsel",
-            "Risk Manager",
-            "Consumer Affairs Manager",
-        ],
         "priority": (
             "Consumer protection, payment compliance, disclosures, privacy, "
             "and auditability"
@@ -253,12 +158,6 @@ STAKEHOLDER_ROLES = {
         ],
     },
     "Leadership": {
-        "roles": [
-            "Executive Sponsor",
-            "VP of Sales",
-            "VP of Operations",
-            "Chief Product Officer",
-        ],
         "priority": (
             "Strategic alignment, dealer and member value, revenue, risk, "
             "and return on investment"
@@ -280,66 +179,12 @@ STAKEHOLDER_ROLES = {
 }
 
 
-URGENCY_OPTIONS = [
-    "Low",
-    "Moderate",
-    "High",
-    "Dealer escalation",
-    "Revenue risk",
-    "Member-impacting issue",
-    "Compliance deadline",
-]
-
-
-BUSINESS_OUTCOMES = [
-    "Increase dealer enrollment",
-    "Improve dealer activation",
-    "Increase program utilization",
-    "Protect dealer relationships",
-    "Improve F&I adoption",
-    "Improve member retention",
-    "Reduce enrollment friction",
-    "Reduce dealer support effort",
-    "Reduce member support effort",
-    "Improve payment reliability",
-    "Improve operational efficiency",
-    "Improve partner reporting",
-    "Meet regulatory or compliance needs",
-]
-
-
-SUPPORT_TYPES = [
-    "Initial feedback",
-    "Dealer workflow review",
-    "Technical feasibility assessment",
-    "Product discovery",
-    "Payment operations review",
-    "Compliance review",
-    "Effort estimate",
-    "Approval",
-    "Prioritization",
-    "Executive sponsorship",
-    "Alternative solution",
-]
-
-
-IMPACT_TYPES = [
-    "Revenue influenced",
-    "Dealers affected",
-    "Rooftops affected",
-    "Members affected",
-    "Monthly enrollments affected",
-    "Retention risk",
-    "Operational hours affected",
-]
-
-
 EXAMPLE_REQUESTS = [
     {
         "title": "Reduce F&I enrollment friction",
         "problem": (
-            "F&I managers report that the enrollment process takes too long "
-            "during a time-sensitive vehicle sale."
+            "F&I managers report that enrollment takes too long during "
+            "a time-sensitive vehicle sale."
         ),
         "outcome": (
             "Make enrollment easier to complete within the dealership's "
@@ -355,12 +200,12 @@ EXAMPLE_REQUESTS = [
     {
         "title": "Improve dealer utilization reporting",
         "problem": (
-            "Dealer-facing teams do not have a consistent view of enrollment "
-            "activity, program utilization, or declining participation."
+            "Dealer-facing teams lack a consistent view of enrollment activity, "
+            "program utilization, and declining participation."
         ),
         "outcome": (
             "Help account teams identify performance gaps and dealers that "
-            "may need training, outreach, or additional support."
+            "may need training, outreach, or support."
         ),
         "stakeholder": "Product Operations",
         "ask": (
@@ -377,7 +222,7 @@ EXAMPLE_REQUESTS = [
         ),
         "outcome": (
             "Provide relevant dealer, rooftop, and enrollment information "
-            "inside the team's existing CRM workflow."
+            "inside the existing CRM workflow."
         ),
         "stakeholder": "Solutions Architect",
         "ask": (
@@ -414,798 +259,6 @@ def render_html(content: str) -> None:
     st.html(content)
 
 
-def apply_styles() -> None:
-    render_html(
-        """
-        <style>
-        :root {
-            --blue: #0879bd;
-            --blue-dark: #05567f;
-            --blue-deep: #063c59;
-            --blue-light: #d7ebf7;
-
-            --green: #6cac3d;
-            --green-dark: #477b27;
-            --green-light: #e1efd7;
-
-            --orange: #f5a316;
-            --orange-dark: #a95f00;
-            --orange-light: #ffe8bd;
-
-            --purple: #9d45a2;
-            --purple-dark: #67296b;
-            --purple-light: #ead4ec;
-
-            --coral: #ee5838;
-            --coral-dark: #a93420;
-            --coral-light: #fbd8d0;
-
-            --yellow: #f8bf25;
-
-            --page: #cbd5dc;
-            --surface: #ffffff;
-            --surface-alt: #edf2f5;
-
-            --text: #1e252b;
-            --text-soft: #414a52;
-            --muted: #626f79;
-
-            --border: #84939e;
-            --border-dark: #5b6a75;
-
-            --shadow: 0 10px 26px rgba(23, 34, 43, 0.15);
-            --shadow-soft: 0 4px 12px rgba(23, 34, 43, 0.11);
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        .stApp {
-            background:
-                linear-gradient(
-                    135deg,
-                    rgba(8, 121, 189, 0.11),
-                    transparent 27%
-                ),
-                linear-gradient(
-                    225deg,
-                    rgba(108, 172, 61, 0.08),
-                    transparent 26%
-                ),
-                var(--page);
-        }
-
-        header[data-testid="stHeader"] {
-            background: transparent;
-        }
-
-        div[data-testid="stToolbar"],
-        #MainMenu,
-        footer {
-            display: none;
-        }
-
-        .block-container {
-            max-width: 1460px;
-            padding-top: 1rem;
-            padding-bottom: 4rem;
-        }
-
-        h1,
-        h2,
-        h3,
-        h4,
-        p {
-            color: var(--text);
-        }
-
-        .app-header {
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 1.15rem 1.35rem;
-            margin-bottom: 0.9rem;
-            box-shadow: var(--shadow);
-        }
-
-        .app-header::before {
-            content: "";
-            position: absolute;
-            inset: 0 0 auto 0;
-            height: 7px;
-            background: linear-gradient(
-                90deg,
-                var(--coral),
-                var(--orange),
-                var(--green),
-                var(--blue),
-                var(--purple),
-                var(--yellow)
-            );
-        }
-
-        .brand {
-            color: var(--text);
-            font-size: 1.9rem;
-            font-weight: 800;
-            letter-spacing: -0.04em;
-        }
-
-        .brand span {
-            color: var(--blue);
-        }
-
-        .brand-subtitle {
-            color: var(--muted);
-            font-size: 0.84rem;
-            margin-top: 0.35rem;
-        }
-
-        .cloud-status {
-            display: inline-flex;
-            align-items: center;
-            border-radius: 999px;
-            padding: 0.42rem 0.75rem;
-            font-size: 0.76rem;
-            font-weight: 800;
-        }
-
-        .cloud-online {
-            color: var(--green-dark);
-            background: var(--green-light);
-            border: 1px solid #82a96b;
-        }
-
-        .cloud-local {
-            color: var(--orange-dark);
-            background: var(--orange-light);
-            border: 1px solid #c58f37;
-        }
-
-        div.stButton > button {
-            min-height: 43px;
-            border: 1px solid var(--border-dark);
-            border-radius: 9px;
-            background: var(--surface);
-            color: var(--text);
-            font-weight: 750;
-            box-shadow: var(--shadow-soft);
-        }
-
-        div.stButton > button:hover {
-            border-color: var(--blue-dark);
-            background: var(--blue-light);
-            color: var(--blue-dark);
-        }
-
-        div.stButton > button[kind="primary"] {
-            border-color: var(--green-dark);
-            background: linear-gradient(
-                135deg,
-                var(--green),
-                var(--green-dark)
-            );
-            color: white;
-        }
-
-        div[data-testid="stExpander"] {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            box-shadow: var(--shadow-soft);
-            margin-bottom: 0.8rem;
-            overflow: hidden;
-        }
-
-        div[data-testid="stExpander"] details {
-            background: white;
-        }
-
-        div[data-testid="stExpander"] summary {
-            color: var(--text);
-            font-weight: 800;
-        }
-
-        div[data-testid="stExpander"] p {
-            color: var(--text-soft);
-        }
-
-        .how-to-callout {
-            background: var(--blue-light);
-            border: 1px solid #82a9c0;
-            border-left: 6px solid var(--blue);
-            border-radius: 9px;
-            padding: 0.85rem 1rem;
-            color: var(--blue-deep);
-            font-size: 0.88rem;
-            font-weight: 750;
-            line-height: 1.5;
-            margin-top: 0.9rem;
-        }
-
-        .value-callout {
-            background: var(--green-light);
-            border: 1px solid #8bad75;
-            border-left: 6px solid var(--green);
-            border-radius: 9px;
-            padding: 0.85rem 1rem;
-            color: var(--green-dark);
-            font-size: 0.88rem;
-            font-weight: 750;
-            line-height: 1.5;
-            margin-top: 0.9rem;
-        }
-
-        .hero {
-            background:
-                radial-gradient(
-                    circle at 87% 110%,
-                    rgba(157, 69, 162, 0.52),
-                    transparent 38%
-                ),
-                linear-gradient(
-                    125deg,
-                    var(--blue-deep),
-                    var(--blue) 72%,
-                    #1597dc
-                );
-            border: 1px solid var(--blue-deep);
-            border-radius: 18px;
-            padding: 2.6rem;
-            margin-bottom: 1.2rem;
-            box-shadow: var(--shadow);
-        }
-
-        .hero h1 {
-            color: white;
-            margin: 0 0 0.75rem;
-            font-size: 2.4rem;
-        }
-
-        .hero p {
-            color: white;
-            max-width: 860px;
-            margin: 0;
-            font-size: 1.04rem;
-            line-height: 1.65;
-        }
-
-        .page-heading {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-left: 8px solid var(--blue);
-            border-radius: 14px;
-            padding: 1.3rem 1.45rem;
-            margin: 1.15rem 0;
-            box-shadow: var(--shadow);
-        }
-
-        .page-eyebrow {
-            color: var(--orange-dark);
-            font-size: 0.75rem;
-            font-weight: 850;
-            letter-spacing: 0.09em;
-            text-transform: uppercase;
-        }
-
-        .page-heading h1 {
-            margin: 0.3rem 0 0;
-            font-size: 2rem;
-        }
-
-        .page-heading p {
-            color: var(--text-soft);
-            max-width: 850px;
-            margin: 0.5rem 0 0;
-        }
-
-        .workflow {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.8rem;
-            margin-bottom: 1.25rem;
-        }
-
-        .workflow-step {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 0.9rem 1rem;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .workflow-step:nth-child(1) {
-            border-top: 7px solid var(--blue);
-        }
-
-        .workflow-step:nth-child(2) {
-            border-top: 7px solid var(--orange);
-        }
-
-        .workflow-step:nth-child(3) {
-            border-top: 7px solid var(--purple);
-        }
-
-        .workflow-number {
-            display: inline-flex;
-            width: 31px;
-            height: 31px;
-            align-items: center;
-            justify-content: center;
-            margin-right: 0.45rem;
-            border-radius: 8px;
-            background: var(--blue-light);
-            color: var(--blue-dark);
-            font-weight: 850;
-        }
-
-        .workflow-step:nth-child(2) .workflow-number {
-            background: var(--orange-light);
-            color: var(--orange-dark);
-        }
-
-        .workflow-step:nth-child(3) .workflow-number {
-            background: var(--purple-light);
-            color: var(--purple-dark);
-        }
-
-        .workflow-label {
-            color: var(--text);
-            font-weight: 800;
-        }
-
-        div[data-testid="stVerticalBlockBorderWrapper"] {
-            background: white;
-            border: 1px solid var(--border) !important;
-            border-radius: 15px !important;
-            box-shadow: var(--shadow);
-            overflow: hidden;
-            margin-bottom: 1.25rem;
-        }
-
-        div[data-testid="stVerticalBlockBorderWrapper"]
-        > div[data-testid="stVerticalBlock"] {
-            padding: 0 1.45rem 1.45rem;
-            gap: 1rem;
-        }
-
-        .section-banner {
-            margin: 0 -1.45rem 0.45rem;
-            padding: 1rem 1.3rem;
-            border-bottom: 1px solid var(--border-dark);
-        }
-
-        .section-blue {
-            background: linear-gradient(
-                90deg,
-                var(--blue-deep),
-                var(--blue)
-            );
-        }
-
-        .section-orange {
-            background: linear-gradient(
-                90deg,
-                var(--orange-dark),
-                var(--orange)
-            );
-        }
-
-        .section-purple {
-            background: linear-gradient(
-                90deg,
-                var(--purple-dark),
-                var(--purple)
-            );
-        }
-
-        .section-green {
-            background: linear-gradient(
-                90deg,
-                var(--green-dark),
-                var(--green)
-            );
-        }
-
-        .section-title {
-            color: white;
-            font-size: 1.08rem;
-            font-weight: 850;
-        }
-
-        .section-description {
-            color: white;
-            font-size: 0.84rem;
-            margin-top: 0.25rem;
-        }
-
-        .section-number {
-            display: inline-flex;
-            width: 30px;
-            height: 30px;
-            align-items: center;
-            justify-content: center;
-            margin-right: 0.55rem;
-            border: 1px solid rgba(255, 255, 255, 0.7);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.16);
-        }
-
-        label[data-testid="stWidgetLabel"] p {
-            color: var(--text) !important;
-            font-size: 0.92rem !important;
-            font-weight: 800 !important;
-        }
-
-        div[data-baseweb="input"] > div,
-        div[data-baseweb="textarea"] > div,
-        div[data-baseweb="select"] > div {
-            background: white !important;
-            border: 2px solid var(--border) !important;
-            border-radius: 9px !important;
-            box-shadow: 0 2px 5px rgba(20, 31, 40, 0.10) !important;
-        }
-
-        div[data-baseweb="input"] > div:focus-within,
-        div[data-baseweb="textarea"] > div:focus-within,
-        div[data-baseweb="select"] > div:focus-within {
-            border-color: var(--blue-dark) !important;
-            box-shadow: 0 0 0 4px rgba(8, 121, 189, 0.20) !important;
-        }
-
-        div[data-baseweb="input"] input,
-        div[data-baseweb="textarea"] textarea,
-        div[data-baseweb="select"] span {
-            color: var(--text) !important;
-            background: white !important;
-        }
-
-        input::placeholder,
-        textarea::placeholder {
-            color: #68747d !important;
-            opacity: 1 !important;
-        }
-
-        .metric-card {
-            height: 100px;
-            background: white;
-            border: 1px solid var(--border);
-            border-left: 7px solid var(--blue);
-            border-radius: 11px;
-            padding: 0.75rem 1rem;
-            box-shadow: var(--shadow-soft);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            overflow: hidden;
-        }
-
-        .metric-orange {
-            border-left-color: var(--orange);
-        }
-
-        .metric-purple {
-            border-left-color: var(--purple);
-        }
-
-        .metric-green {
-            border-left-color: var(--green);
-        }
-
-        .metric-label {
-            color: var(--text-soft);
-            font-size: 0.78rem;
-            font-weight: 750;
-            line-height: 1.1;
-        }
-
-        .metric-value {
-            min-height: 1.6rem;
-            color: var(--blue-dark);
-            margin-top: 0.12rem;
-            font-size: 1.35rem;
-            font-weight: 850;
-            line-height: 1.1;
-        }
-
-        .metric-orange .metric-value {
-            color: var(--orange-dark);
-        }
-
-        .metric-purple .metric-value {
-            color: var(--purple-dark);
-        }
-
-        .metric-green .metric-value {
-            color: var(--green-dark);
-        }
-
-        .metric-note {
-            color: var(--muted);
-            font-size: 0.7rem;
-            line-height: 1.2;
-            margin-top: 0.1rem;
-        }
-
-        .section-intro {
-            color: var(--text-soft);
-            margin: -0.35rem 0 1rem;
-            font-size: 0.92rem;
-        }
-
-        .example-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .example-card {
-            min-height: 100%;
-            background: white;
-            border: 1px solid var(--border);
-            border-top: 8px solid var(--blue);
-            border-radius: 13px;
-            padding: 1.2rem;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .example-orange {
-            border-top-color: var(--orange);
-        }
-
-        .example-purple {
-            border-top-color: var(--purple);
-        }
-
-        .example-green {
-            border-top-color: var(--green);
-        }
-
-        .example-title {
-            color: var(--text);
-            font-size: 1.05rem;
-            font-weight: 850;
-            margin-bottom: 0.9rem;
-        }
-
-        .example-row {
-            margin-top: 0.75rem;
-        }
-
-        .example-label {
-            color: var(--blue-dark);
-            font-size: 0.68rem;
-            font-weight: 850;
-            letter-spacing: 0.07em;
-            text-transform: uppercase;
-        }
-
-        .example-orange .example-label {
-            color: var(--orange-dark);
-        }
-
-        .example-purple .example-label {
-            color: var(--purple-dark);
-        }
-
-        .example-green .example-label {
-            color: var(--green-dark);
-        }
-
-        .example-value {
-            color: var(--text-soft);
-            font-size: 0.87rem;
-            line-height: 1.5;
-            margin-top: 0.18rem;
-        }
-
-        .request-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-left: 8px solid var(--blue);
-            border-radius: 12px;
-            padding: 1rem 1.1rem;
-            margin-bottom: 0.7rem;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .request-title {
-            color: var(--text);
-            font-size: 1rem;
-            font-weight: 800;
-            margin-top: 0.55rem;
-        }
-
-        .request-meta {
-            color: var(--text-soft);
-            font-size: 0.82rem;
-            margin-top: 0.25rem;
-        }
-
-        .empty-state {
-            background: white;
-            border: 1px dashed var(--border-dark);
-            border-radius: 13px;
-            padding: 1.5rem;
-            margin-bottom: 0.9rem;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .empty-state-title {
-            color: var(--text);
-            font-size: 1.05rem;
-            font-weight: 850;
-        }
-
-        .empty-state-text {
-            color: var(--text-soft);
-            font-size: 0.9rem;
-            line-height: 1.5;
-            margin-top: 0.35rem;
-        }
-
-        .pill {
-            display: inline-block;
-            padding: 0.28rem 0.62rem;
-            margin-right: 0.25rem;
-            border-radius: 999px;
-            font-size: 0.71rem;
-            font-weight: 800;
-        }
-
-        .pill-green {
-            background: var(--green-light);
-            color: var(--green-dark);
-            border: 1px solid #82a96b;
-        }
-
-        .pill-purple {
-            background: var(--purple-light);
-            color: var(--purple-dark);
-            border: 1px solid #a870ab;
-        }
-
-        .pill-orange {
-            background: var(--orange-light);
-            color: var(--orange-dark);
-            border: 1px solid #c58f37;
-        }
-
-        .pill-coral {
-            background: var(--coral-light);
-            color: var(--coral-dark);
-            border: 1px solid #cb7d6c;
-        }
-
-        .summary-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-left: 7px solid var(--blue);
-            border-radius: 11px;
-            padding: 0.95rem 1rem;
-            margin-bottom: 0.65rem;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .summary-orange {
-            border-left-color: var(--orange);
-        }
-
-        .summary-purple {
-            border-left-color: var(--purple);
-        }
-
-        .summary-coral {
-            border-left-color: var(--coral);
-        }
-
-        .summary-green {
-            border-left-color: var(--green);
-        }
-
-        .summary-label {
-            color: var(--blue-dark);
-            font-size: 0.7rem;
-            font-weight: 850;
-            letter-spacing: 0.07em;
-            text-transform: uppercase;
-        }
-
-        .summary-orange .summary-label {
-            color: var(--orange-dark);
-        }
-
-        .summary-purple .summary-label {
-            color: var(--purple-dark);
-        }
-
-        .summary-coral .summary-label {
-            color: var(--coral-dark);
-        }
-
-        .summary-green .summary-label {
-            color: var(--green-dark);
-        }
-
-        .summary-value {
-            color: var(--text);
-            font-size: 0.9rem;
-            line-height: 1.5;
-            margin-top: 0.25rem;
-        }
-
-        .stakeholder-panel {
-            background: var(--surface-alt);
-            border: 1px solid var(--border);
-            border-top: 8px solid var(--purple);
-            border-radius: 13px;
-            padding: 1.2rem;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .stakeholder-title {
-            color: var(--purple-dark);
-            font-size: 0.75rem;
-            font-weight: 850;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .stakeholder-role {
-            color: var(--text);
-            font-size: 1.15rem;
-            font-weight: 850;
-            margin-top: 0.4rem;
-        }
-
-        .stakeholder-text {
-            color: var(--text-soft);
-            font-size: 0.9rem;
-            line-height: 1.55;
-            margin-top: 0.65rem;
-        }
-
-        @media (max-width: 900px) {
-            .example-grid,
-            .workflow {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 520px) {
-            .block-container {
-                padding-left: 0.75rem;
-                padding-right: 0.75rem;
-            }
-
-            .cloud-status {
-                display: none;
-            }
-
-            .hero {
-                padding: 1.7rem;
-            }
-
-            .hero h1 {
-                font-size: 1.85rem;
-            }
-
-            .metric-card {
-                height: 94px;
-            }
-        }
-        </style>
-        """
-    )
-
-
 def initialize_state() -> None:
     defaults = {
         "page": "Dashboard",
@@ -1213,7 +266,7 @@ def initialize_state() -> None:
         "requests_loaded": False,
         "requests": [],
         "database_connected": False,
-        "database_message": "Checking storage",
+        "database_message": "Beta v1.0",
     }
 
     for key, value in defaults.items():
@@ -1228,9 +281,10 @@ def refresh_requests() -> None:
     try:
         st.session_state.requests = list_requests()
 
-        connected, message = test_connection()
+        connected, _ = test_connection()
+
         st.session_state.database_connected = connected
-        st.session_state.database_message = message
+        st.session_state.database_message = "Beta v1.0"
 
     except DatabaseError:
         st.session_state.requests = []
@@ -1258,7 +312,7 @@ def render_header() -> None:
                 </div>
 
                 <div class="brand-subtitle">
-                    Dealer, member, and cross-functional alignment workspace
+                    Sales business case and cross-functional alignment workspace
                 </div>
             </div>
 
@@ -1273,7 +327,7 @@ def render_header() -> None:
 
     pages = [
         "Dashboard",
-        "New Request",
+        "Business Case",
         "Request Detail",
         "Meeting Brief",
     ]
@@ -1331,34 +385,11 @@ def render_section_banner(
     )
 
 
-def render_workflow() -> None:
-    render_html(
-        """
-        <div class="workflow">
-            <div class="workflow-step">
-                <span class="workflow-number">1</span>
-                <span class="workflow-label">Define the dealer or member need</span>
-            </div>
-
-            <div class="workflow-step">
-                <span class="workflow-number">2</span>
-                <span class="workflow-label">Establish the business impact</span>
-            </div>
-
-            <div class="workflow-step">
-                <span class="workflow-number">3</span>
-                <span class="workflow-label">Select the right stakeholder</span>
-            </div>
-        </div>
-        """
-    )
-
-
 def render_request_selector(key: str) -> dict[str, Any] | None:
     requests = st.session_state.requests
 
     if not requests:
-        st.info("Create a request first.")
+        st.info("Build and save a business case first.")
         return None
 
     options = [
@@ -1370,7 +401,7 @@ def render_request_selector(key: str) -> dict[str, Any] | None:
     ]
 
     selected_index = st.selectbox(
-        "Select request",
+        "Select business case",
         range(len(options)),
         index=min(
             st.session_state.selected_request_index,
@@ -1390,40 +421,66 @@ def get_stakeholder_guidance(
 ) -> dict[str, Any]:
     team = request.get("stakeholder_team", "Product")
 
-    return STAKEHOLDER_ROLES.get(
-        team,
-        STAKEHOLDER_ROLES["Product"],
+    default_guidance = STAKEHOLDER_ROLES["Product"]
+
+    guidance = STAKEHOLDER_ROLES.get(team, default_guidance).copy()
+
+    if request.get("stakeholder_rationale"):
+        guidance["priority"] = request["stakeholder_rationale"]
+
+    if request.get("recommended_framing"):
+        guidance["framing"] = request["recommended_framing"]
+
+    return guidance
+
+
+def format_impact(request: dict[str, Any]) -> str:
+    impact_type = request.get(
+        "impact_type",
+        "Revenue influenced",
     )
+
+    impact_value = int(
+        request.get(
+            "impact_value",
+            request.get("revenue", 0),
+        )
+        or 0
+    )
+
+    if impact_type == "Revenue influenced":
+        return f"${impact_value:,.0f}"
+
+    return f"{impact_value:,} {impact_type.lower()}"
 
 
 def render_guidance_sections() -> None:
-    with st.expander("How to use ValueBridge", expanded=False):
+    with st.expander("How ValueBridge works", expanded=False):
         st.markdown(
             """
-            **1. Start with the dealer or member problem**  
-            Describe what the dealer, F&I team, member, or internal team is
-            trying to accomplish and what is preventing progress.
+            **1. Describe the sales situation**  
+            Explain the customer request, commercial priority, obstacle, and
+            what is needed to move the opportunity forward.
 
-            **2. Explain the business impact**  
-            Add the expected outcome, urgency, supporting evidence, and the
-            number of dealers, rooftops, members, enrollments, or dollars affected.
+            **2. Run the AI analysis**  
+            ValueBridge drafts the customer need, business problem, commercial
+            impact, risk of inaction, stakeholder recommendation, and internal ask.
 
-            **3. Identify the right stakeholder**  
-            Choose the team and role whose input, approval, review, or support
-            is needed.
+            **3. Review the business case**  
+            Confirm the language, correct any assumptions, and add missing evidence.
 
             **4. Prepare the conversation**  
-            Review the stakeholder perspective and use the meeting brief to
-            present a clear, business-focused request.
+            Save the case and use the meeting brief to guide the cross-functional
+            discussion.
             """
         )
 
         render_html(
             """
             <div class="how-to-callout">
-                A strong request explains the dealer or member problem, the
-                measurable impact, the evidence, and the specific decision or
-                support needed.
+                AI-generated content is a working draft. The salesperson remains
+                responsible for confirming the facts, commercial impact, and
+                requested action.
             </div>
             """
         )
@@ -1431,49 +488,42 @@ def render_guidance_sections() -> None:
     with st.expander("Why ValueBridge matters", expanded=False):
         st.markdown(
             """
-            **Improves cross-team collaboration**  
-            Gives Dealer Sales, Dealer Success, Member Services, Payment
-            Operations, Product, Engineering, Compliance, and leadership a
-            shared view of the request.
+            **Translates sales insight into business language**  
+            Helps Sales explain customer demand in terms that Product,
+            Engineering, Operations, Compliance, and Leadership can evaluate.
 
-            **Creates clearer requests**  
-            Separates the underlying dealer or member problem from the proposed
-            solution and identifies the support that is actually needed.
+            **Builds a stronger internal case**  
+            Connects the customer need to revenue, retention, adoption,
+            operational impact, competitive risk, and urgency.
 
-            **Connects requests to business value**  
-            Captures enrollment impact, dealer retention, member experience,
-            payment reliability, operational effort, revenue, and compliance risk.
+            **Improves stakeholder alignment**  
+            Recommends the team most capable of advancing the request and
+            explains why their participation matters.
 
-            **Prepares better conversations**  
-            Helps sales and dealer-facing teams anticipate stakeholder priorities,
-            concerns, dependencies, and questions before the meeting.
-
-            **Supports faster decisions**  
-            Creates a concise request and meeting brief that makes ownership,
-            decisions, and next steps easier to define.
+            **Creates a specific ask**  
+            Moves beyond describing the problem by identifying the decision,
+            review, action, or commitment Sales needs.
             """
         )
 
         render_html(
             """
             <div class="value-callout">
-                ValueBridge helps AutoPayPlus teams turn dealer and member needs
-                into clear, business-focused requests that improve alignment,
-                collaboration, and decision-making across the organization.
+                ValueBridge helps Sales convert field intelligence into
+                decision-ready business cases for cross-functional action.
             </div>
             """
         )
 
 
 def render_example_requests() -> None:
-    st.subheader("What a strong request looks like")
+    st.subheader("What a strong business case looks like")
 
     render_html(
         """
         <div class="section-intro">
-            These examples show how dealer, member, payment, and partner needs
-            can be translated into a clear business problem, measurable outcome,
-            stakeholder, and specific ask.
+            Strong cases clearly connect the customer need, commercial impact,
+            internal stakeholder, and requested action.
         </div>
         """
     )
@@ -1512,7 +562,7 @@ def render_example_requests() -> None:
                 </div>
 
                 <div class="example-row">
-                    <div class="example-label">Specific ask</div>
+                    <div class="example-label">Internal ask</div>
                     <div class="example-value">
                         {clean(example["ask"])}
                     </div>
@@ -1537,9 +587,8 @@ def render_dashboard() -> None:
             <h1>Turn sales insight into decision-ready business cases.</h1>
 
             <p>
-                Capture customer demand, quantify commercial impact, align the
-                right cross-functional stakeholders, and prepare a clear request
-                for action.
+                Describe the opportunity, apply commercial context, and use
+                AI-assisted analysis to prepare a stronger cross-functional case.
             </p>
         </section>
         """
@@ -1550,14 +599,27 @@ def render_dashboard() -> None:
     requests = st.session_state.requests
 
     total_impact = sum(
-        int(request.get("impact_value", request.get("revenue", 0)))
+        int(
+            request.get(
+                "impact_value",
+                request.get(
+                    "revenue",
+                    request.get("revenue_impact", 0),
+                ),
+            )
+            or 0
+        )
         for request in requests
-        if request.get("impact_type", "Revenue influenced")
+        if request.get(
+            "impact_type",
+            "Revenue influenced",
+        )
         == "Revenue influenced"
     )
 
     high_priority = sum(
-        request.get("urgency") in {
+        request.get("urgency")
+        in {
             "High",
             "Dealer escalation",
             "Revenue risk",
@@ -1568,9 +630,15 @@ def render_dashboard() -> None:
     )
 
     stakeholder_teams = {
-        request.get("stakeholder_team")
+        (
+            request.get("stakeholder_team")
+            or request.get("recommended_stakeholder")
+        )
         for request in requests
-        if request.get("stakeholder_team")
+        if (
+            request.get("stakeholder_team")
+            or request.get("recommended_stakeholder")
+        )
     }
 
     st.subheader("Workspace overview")
@@ -1579,15 +647,15 @@ def render_dashboard() -> None:
 
     metrics = [
         (
-            "Active Requests",
+            "Business Cases",
             len(requests),
-            "Dealer and member business cases",
+            "Saved sales priorities",
             "",
         ),
         (
             "High Priority",
             high_priority,
-            "Requires timely discussion",
+            "Requires timely engagement",
             "metric-orange",
         ),
         (
@@ -1599,7 +667,7 @@ def render_dashboard() -> None:
         (
             "Revenue Influenced",
             f"${total_impact:,.0f}",
-            "Revenue-based requests",
+            "Estimated commercial value",
             "metric-green",
         ),
     ]
@@ -1620,38 +688,42 @@ def render_dashboard() -> None:
 
     render_example_requests()
 
-    st.subheader("Recent requests")
+    st.subheader("Recent business cases")
 
     if not requests:
-        render_html(
-            """
-            <div class="empty-state">
-                <div class="empty-state-title">
-                    No requests have been created yet.
+        with st.container(border=True):
+            render_html(
+                """
+                <div class="empty-state">
+                    <div class="empty-state-title">
+                        No business cases have been created yet.
+                    </div>
+
+                    <div class="empty-state-text">
+                        Describe a real sales situation and let ValueBridge build
+                        the first decision-ready case.
+                    </div>
                 </div>
+                """
+            )
 
-                <div class="empty-state-text">
-                    Create the first dealer, member, payment, operational, or
-                    compliance request when the team is ready.
-                </div>
-            </div>
-            """
-        )
-
-        empty_action, _ = st.columns([1.2, 4])
-
-        with empty_action:
             if st.button(
-                "Create First Request",
+                "Build First Case",
                 type="primary",
                 use_container_width=True,
-                key="create_first_request",
+                key="build_first_case",
             ):
-                navigate("New Request")
+                navigate("Business Case")
 
         return
 
     for index, request in enumerate(requests):
+        request_id = (
+            request.get("id")
+            or request.get("request_id")
+            or index
+        )
+
         urgency = request.get("urgency", "Moderate")
 
         if urgency in {
@@ -1671,385 +743,99 @@ def render_dashboard() -> None:
             "Revenue influenced",
         )
 
-        impact_value = int(
+        raw_impact_value = request.get(
+            "impact_value",
             request.get(
-                "impact_value",
-                request.get("revenue", 0),
-            )
+                "revenue",
+                request.get("revenue_impact", 0),
+            ),
         )
+
+        try:
+            impact_value = float(raw_impact_value or 0)
+        except (TypeError, ValueError):
+            impact_value = 0
 
         if impact_type == "Revenue influenced":
-            impact_text = f"${impact_value:,.0f} revenue influenced"
+            impact_text = (
+                f"${impact_value:,.0f} revenue influenced"
+                if impact_value > 0
+                else "Revenue not yet confirmed"
+            )
         else:
-            impact_text = f"{impact_value:,} {impact_type.lower()}"
+            impact_text = (
+                f"{impact_value:,.0f} {str(impact_type).lower()}"
+            )
 
-        render_html(
-            f"""
-            <div class="request-card">
-                <span class="pill pill-purple">
-                    {clean(request.get("stakeholder_team", "Unmapped"))}
-                </span>
+        account_name = (
+            request.get("account")
+            or request.get("account_name")
+            or request.get("customer")
+            or "No account assigned"
+        )
 
-                <span class="pill {urgency_class}">
-                    {clean(urgency)}
-                </span>
+        case_title = (
+            request.get("title")
+            or (
+                f"{account_name} Business Case"
+                if account_name != "No account assigned"
+                else "Untitled business case"
+            )
+        )
 
-                <div class="request-title">
-                    {clean(request.get("title", "Untitled request"))}
+        stakeholder = (
+            request.get("stakeholder_team")
+            or request.get("recommended_stakeholder")
+            or "Unmapped"
+        )
+
+        deal_stage = request.get(
+            "deal_stage",
+            "Stage not provided",
+        )
+
+        with st.container(border=True):
+            render_html(
+                f"""
+                <div class="request-card-content">
+                    <div class="request-pills">
+                        <span class="pill pill-purple">
+                            {clean(stakeholder)}
+                        </span>
+
+                        <span class="pill {urgency_class}">
+                            {clean(urgency)}
+                        </span>
+                    </div>
+
+                    <div class="request-title">
+                        {clean(case_title)}
+                    </div>
+
+                    <div class="request-meta">
+                        {clean(account_name)}
+                        · {clean(deal_stage)}
+                        · {clean(impact_text)}
+                    </div>
                 </div>
-
-                <div class="request-meta">
-                    {clean(request.get("account", request.get("customer", "No dealer or member assigned")))}
-                    · {clean(request.get("request_type", "Request"))}
-                    · {clean(impact_text)}
-                </div>
-            </div>
-            """
-        )
-
-        if st.button(
-            "Open request",
-            key=f"open_{request.get('id', index)}",
-            use_container_width=True,
-        ):
-            st.session_state.selected_request_index = index
-            navigate("Request Detail")
-
-
-def render_new_request() -> None:
-    render_page_heading(
-        "Request workspace",
-        "Create a dealer or member business request",
-        (
-            "Capture the information needed to explain the need, quantify the "
-            "impact, and prepare for the appropriate cross-functional conversation."
-        ),
-    )
-
-    render_workflow()
-
-    with st.container(border=True):
-        render_section_banner(
-            1,
-            "Define the request",
-            (
-                "Describe the dealer, member, payment, operational, "
-                "or compliance problem."
-            ),
-            "blue",
-        )
-
-        category_column, type_column = st.columns(2)
-
-        with category_column:
-            category = st.selectbox(
-                "Request category",
-                list(REQUEST_CATEGORIES),
-                key="request_category",
+                """
             )
 
-        with type_column:
-            request_type = st.selectbox(
-                "Request type",
-                REQUEST_CATEGORIES[category],
-                key=f"request_type_{category}",
-            )
-
-        title_column, account_column = st.columns([1.3, 1])
-
-        with title_column:
-            title = st.text_input(
-                "Request title",
-                placeholder="Reduce F&I enrollment friction",
-                key="request_title",
-            )
-
-        with account_column:
-            account = st.text_input(
-                "Dealer, rooftop, member group, or opportunity",
-                placeholder=(
-                    "Dealer group, rooftop, member segment, partner, "
-                    "or market"
-                ),
-                key="request_account",
-            )
-
-        problem = st.text_area(
-            "Business problem",
-            placeholder=(
-                "What is preventing the dealer, F&I team, member, or internal "
-                "team from reaching the desired result?"
-            ),
-            height=125,
-            key="request_problem",
-        )
-
-        desired_outcome = st.text_area(
-            "Requested outcome",
-            placeholder=(
-                "What should become easier, faster, more reliable, more compliant, "
-                "or more effective?"
-            ),
-            height=100,
-            key="request_desired_outcome",
-        )
-
-        proposed_solution = st.text_area(
-            "Proposed solution",
-            placeholder=(
-                "Optional. Capture the current idea without treating it as "
-                "the only possible solution."
-            ),
-            height=90,
-            key="request_solution",
-        )
-
-    with st.container(border=True):
-        render_section_banner(
-            2,
-            "Establish the business impact",
-            (
-                "Show how the request affects dealers, members, enrollments, "
-                "payments, revenue, retention, or operations."
-            ),
-            "orange",
-        )
-
-        impact_type_column, impact_value_column = st.columns(2)
-
-        with impact_type_column:
-            impact_type = st.selectbox(
-                "Primary impact measure",
-                IMPACT_TYPES,
-                key="request_impact_type",
-            )
-
-        with impact_value_column:
-            impact_value = st.number_input(
-                "Estimated impact",
-                min_value=0,
-                step=1 if impact_type != "Revenue influenced" else 10000,
-                format="%d",
-                key="request_impact_value",
-            )
-
-        urgency_column, outcome_column = st.columns(2)
-
-        with urgency_column:
-            urgency = st.selectbox(
-                "Urgency",
-                URGENCY_OPTIONS,
-                key="request_urgency",
-            )
-
-        with outcome_column:
-            business_outcome = st.selectbox(
-                "Primary business outcome",
-                BUSINESS_OUTCOMES,
-                key="request_business_outcome",
-            )
-
-        evidence = st.text_area(
-            "Supporting evidence",
-            placeholder=(
-                "Dealer enrollment trends, F&I feedback, dealer support cases, "
-                "member complaints, payment posting issues, cancellation activity, "
-                "CRM notes, training completion, partner utilization, lender "
-                "exceptions, or repeated requests from multiple rooftops."
-            ),
-            height=120,
-            key="request_evidence",
-        )
-
-    with st.container(border=True):
-        render_section_banner(
-            3,
-            "Select the stakeholder",
-            (
-                "Identify the person whose input, review, approval, "
-                "or support is needed."
-            ),
-            "purple",
-        )
-
-        team_column, role_column = st.columns(2)
-
-        with team_column:
-            stakeholder_team = st.selectbox(
-                "Stakeholder team",
-                list(STAKEHOLDER_ROLES),
-                key="stakeholder_team",
-            )
-
-        stakeholder_config = STAKEHOLDER_ROLES[stakeholder_team]
-
-        with role_column:
-            stakeholder_role = st.selectbox(
-                "Stakeholder role",
-                stakeholder_config["roles"],
-                key=f"role_{stakeholder_team}",
-            )
-
-        support_type = st.selectbox(
-            "Support needed",
-            SUPPORT_TYPES,
-            key="request_support_type",
-        )
-
-        stakeholder_ask = st.text_area(
-            "Specific ask",
-            placeholder=(
-                "Example: Review the dealer enrollment workflow and determine "
-                "whether the issue is product friction, integration limitations, "
-                "or training."
-            ),
-            height=110,
-            key="request_stakeholder_ask",
-        )
-
-        render_html(
-            f"""
-            <div class="stakeholder-panel">
-                <div class="stakeholder-title">
-                    Stakeholder perspective
-                </div>
-
-                <div class="stakeholder-role">
-                    {clean(stakeholder_role)}
-                </div>
-
-                <div class="stakeholder-text">
-                    <strong>Primary consideration:</strong><br>
-                    {clean(stakeholder_config["priority"])}
-                </div>
-
-                <div class="stakeholder-text">
-                    <strong>Possible concern:</strong><br>
-                    {clean(stakeholder_config["concern"])}
-                </div>
-            </div>
-            """
-        )
-
-        submitted = st.button(
-            "Save Request",
-            type="primary",
-            use_container_width=True,
-        )
-
-    if not submitted:
-        return
-
-    validation_errors = []
-
-    if not title.strip():
-        validation_errors.append("Enter a request title.")
-
-    if not problem.strip():
-        validation_errors.append("Describe the business problem.")
-
-    if not desired_outcome.strip():
-        validation_errors.append("Describe the requested outcome.")
-
-    if not stakeholder_ask.strip():
-        validation_errors.append("Enter a specific stakeholder ask.")
-
-    if validation_errors:
-        for error in validation_errors:
-            st.error(error)
-
-        return
-
-    request_record = {
-        "title": title.strip(),
-        "account": account.strip() or "No dealer or member assigned",
-        "customer": account.strip() or "No dealer or member assigned",
-        "category": category,
-        "request_type": request_type,
-        "status": "Draft",
-        "problem": problem.strip(),
-        "desired_outcome": desired_outcome.strip(),
-        "solution": proposed_solution.strip(),
-        "impact_type": impact_type,
-        "impact_value": int(impact_value),
-        "revenue": (
-            int(impact_value)
-            if impact_type == "Revenue influenced"
-            else 0
-        ),
-        "urgency": urgency,
-        "business_outcome": business_outcome,
-        "evidence": evidence.strip(),
-        "stakeholder_team": stakeholder_team,
-        "stakeholder_role": stakeholder_role,
-        "support_type": support_type,
-        "stakeholder_ask": stakeholder_ask.strip(),
-    }
-
-    try:
-        saved_request = create_request(request_record)
-
-        if st.session_state.database_connected:
-            st.session_state.requests_loaded = False
-            refresh_requests()
-        else:
-            st.session_state.requests.insert(0, saved_request)
-
-        st.session_state.selected_request_index = 0
-
-        if st.session_state.database_connected:
-            st.success("Request saved.")
-        else:
-            st.success("Request saved for this session.")
-
-    except DatabaseError as exc:
-        local_record = {
-            **request_record,
-            "id": f"local-{len(st.session_state.requests) + 1}",
-        }
-
-        st.session_state.requests.insert(0, local_record)
-        st.session_state.selected_request_index = 0
-
-        st.warning(
-            f"{exc} The request was retained in this session only."
-        )
-
-    if st.button(
-        "Open Request Detail",
-        type="primary",
-        use_container_width=True,
-        key="open_saved_request",
-    ):
-        navigate("Request Detail")
-
-
-def format_impact(request: dict[str, Any]) -> str:
-    impact_type = request.get(
-        "impact_type",
-        "Revenue influenced",
-    )
-
-    impact_value = int(
-        request.get(
-            "impact_value",
-            request.get("revenue", 0),
-        )
-    )
-
-    if impact_type == "Revenue influenced":
-        return f"${impact_value:,.0f}"
-
-    return f"{impact_value:,} {impact_type.lower()}"
-
+            if st.button(
+                "Open business case",
+                key=f"open_{request_id}",
+                use_container_width=True,
+            ):
+                st.session_state.selected_request_index = index
+                navigate("Request Detail")
 
 def render_request_detail() -> None:
     render_page_heading(
-        "Request analysis",
-        "Request detail",
+        "Business case analysis",
+        "Business case detail",
         (
-            "Review the dealer, member, payment, or operational business case "
-            "and how it should be presented to the selected stakeholder."
+            "Review the customer need, commercial rationale, risk of inaction, "
+            "and recommended influence strategy."
         ),
     )
 
@@ -2066,25 +852,41 @@ def render_request_detail() -> None:
         with st.container(border=True):
             render_section_banner(
                 1,
-                "Business request",
+                "Opportunity and business case",
                 (
-                    "The core problem, requested outcome, and measurable "
-                    "dealer or member impact."
+                    "The customer need, business problem, desired outcome, "
+                    "and commercial impact."
                 ),
                 "blue",
             )
 
             items = [
                 (
-                    "Request",
+                    "Business case",
                     request.get("title"),
                     "",
                 ),
                 (
-                    "Dealer, member group, or opportunity",
+                    "Account or opportunity",
                     request.get(
                         "account",
                         request.get("customer"),
+                    ),
+                    "",
+                ),
+                (
+                    "Deal stage",
+                    request.get(
+                        "deal_stage",
+                        "Not provided",
+                    ),
+                    "summary-purple",
+                ),
+                (
+                    "Customer need",
+                    request.get(
+                        "customer_need",
+                        "Not documented",
                     ),
                     "",
                 ),
@@ -2094,26 +896,30 @@ def render_request_detail() -> None:
                     "",
                 ),
                 (
-                    "Requested outcome",
+                    "Outcome required",
                     request.get("desired_outcome"),
                     "summary-orange",
                 ),
                 (
+                    "Commercial impact",
                     request.get(
-                        "impact_type",
-                        "Revenue influenced",
+                        "commercial_impact",
+                        format_impact(request),
                     ),
-                    format_impact(request),
                     "summary-green",
                 ),
                 (
-                    "Primary business outcome",
-                    request.get("business_outcome"),
-                    "summary-purple",
+                    "Risk of inaction",
+                    request.get(
+                        "risk_of_inaction",
+                        "Not documented",
+                    ),
+                    "summary-coral",
                 ),
                 (
-                    "Supporting evidence",
-                    request.get("evidence") or "No evidence documented.",
+                    "Evidence",
+                    request.get("evidence")
+                    or "No evidence documented.",
                     "summary-orange",
                 ),
             ]
@@ -2132,8 +938,11 @@ def render_request_detail() -> None:
         with st.container(border=True):
             render_section_banner(
                 2,
-                "Stakeholder alignment",
-                "How to present the request to the selected audience.",
+                "Influence strategy",
+                (
+                    "The recommended stakeholder, positioning, and "
+                    "specific internal ask."
+                ),
                 "purple",
             )
 
@@ -2141,7 +950,7 @@ def render_request_detail() -> None:
                 f"""
                 <div class="stakeholder-panel">
                     <div class="stakeholder-title">
-                        Primary stakeholder
+                        Recommended stakeholder
                     </div>
 
                     <div class="stakeholder-role">
@@ -2157,8 +966,11 @@ def render_request_detail() -> None:
 
             guidance_items = [
                 (
-                    "Primary consideration",
-                    guidance["priority"],
+                    "Why this stakeholder should engage",
+                    request.get(
+                        "stakeholder_rationale",
+                        guidance["priority"],
+                    ),
                     "summary-purple",
                 ),
                 (
@@ -2168,7 +980,10 @@ def render_request_detail() -> None:
                 ),
                 (
                     "Recommended framing",
-                    guidance["framing"],
+                    request.get(
+                        "recommended_framing",
+                        guidance["framing"],
+                    ),
                     "summary-green",
                 ),
                 (
@@ -2177,9 +992,17 @@ def render_request_detail() -> None:
                     "summary-orange",
                 ),
                 (
-                    "Specific ask",
+                    "Internal ask",
                     request.get("stakeholder_ask"),
                     "summary-green",
+                ),
+                (
+                    "Executive summary",
+                    request.get(
+                        "executive_summary",
+                        "Not documented",
+                    ),
+                    "summary-purple",
                 ),
             ]
 
@@ -2193,7 +1016,20 @@ def render_request_detail() -> None:
                     """
                 )
 
-    action_column, _ = st.columns([1.2, 3])
+    missing_information = request.get(
+        "missing_information",
+        [],
+    )
+
+    if missing_information:
+        with st.expander(
+            "Information that would strengthen the case",
+            expanded=False,
+        ):
+            for item in missing_information:
+                st.markdown(f"- {item}")
+
+    action_column, _ = st.columns([1.4, 3])
 
     with action_column:
         if st.button(
@@ -2207,10 +1043,10 @@ def render_request_detail() -> None:
 def render_meeting_brief() -> None:
     render_page_heading(
         "Meeting preparation",
-        "Meeting brief",
+        "Stakeholder meeting brief",
         (
-            "Use this summary to prepare for the cross-functional "
-            "stakeholder conversation."
+            "Use this summary to present the business case and secure "
+            "a clear decision, action, or next step."
         ),
     )
 
@@ -2225,20 +1061,27 @@ def render_meeting_brief() -> None:
         "account",
         request.get(
             "customer",
-            "a dealer, partner, or member group",
+            "the customer or opportunity",
         ),
     )
 
-    opening = (
-        f"We are evaluating {request.get('request_type', 'a request')} "
-        f"for {account}."
-    )
+    opening = request.get("executive_summary")
 
-    business_case = (
-        f"The request supports the outcome "
-        f"'{request.get('business_outcome', 'business value')}' and has an "
-        f"estimated impact of {format_impact(request)}."
-    )
+    if not opening:
+        opening = (
+            f"We are evaluating a sales priority for {account}. "
+            f"The opportunity requires support from "
+            f"{request.get('stakeholder_team', 'a cross-functional team')} "
+            f"to move forward."
+        )
+
+    business_case = request.get("commercial_impact")
+
+    if not business_case:
+        business_case = (
+            f"The request has an estimated impact of "
+            f"{format_impact(request)}."
+        )
 
     with st.container(border=True):
         render_section_banner(
@@ -2253,42 +1096,65 @@ def render_meeting_brief() -> None:
 
         brief_items = [
             (
-                "Opening",
+                "Executive opening",
                 opening,
                 "",
             ),
             (
-                "Dealer, member, or operational problem",
+                "Customer need",
+                request.get(
+                    "customer_need",
+                    "Not documented",
+                ),
+                "",
+            ),
+            (
+                "Business problem",
                 request.get("problem"),
                 "",
             ),
             (
-                "Requested outcome",
+                "Outcome required",
                 request.get("desired_outcome"),
                 "summary-orange",
             ),
             (
-                "Business impact",
+                "Commercial impact",
                 business_case,
                 "summary-green",
             ),
             (
-                "Supporting evidence",
-                request.get("evidence") or "No evidence documented.",
-                "summary-orange",
-            ),
-            (
-                "Possible stakeholder concern",
-                guidance["concern"],
+                "Risk of inaction",
+                request.get(
+                    "risk_of_inaction",
+                    "Not documented",
+                ),
                 "summary-coral",
             ),
             (
-                "Recommended framing",
-                guidance["framing"],
+                "Evidence",
+                request.get("evidence")
+                or "No evidence documented.",
+                "summary-orange",
+            ),
+            (
+                "Why this stakeholder should engage",
+                request.get(
+                    "stakeholder_rationale",
+                    guidance["priority"],
+                ),
                 "summary-purple",
             ),
             (
-                "Specific ask",
+                "Recommended framing",
+                request.get(
+                    "recommended_framing",
+                    guidance["framing"],
+                ),
+                "summary-purple",
+            ),
+            (
+                "Internal ask",
                 request.get("stakeholder_ask"),
                 "summary-green",
             ),
@@ -2304,7 +1170,7 @@ def render_meeting_brief() -> None:
                 """
             )
 
-    st.subheader("Questions to consider")
+    st.subheader("Questions to prepare for")
 
     for number, question in enumerate(
         guidance["questions"],
@@ -2322,11 +1188,11 @@ def render_meeting_brief() -> None:
     render_html(
         """
         <div class="summary-card summary-green">
-            <div class="summary-label">Recommended next step</div>
+            <div class="summary-label">Meeting objective</div>
 
             <div class="summary-value">
-                Confirm the owner, agreed action, required review, and target
-                follow-up date before the meeting ends.
+                Confirm the decision, accountable owner, required follow-up,
+                and target completion date before the meeting ends.
             </div>
         </div>
         """
@@ -2342,10 +1208,16 @@ def main() -> None:
 
     if page == "Dashboard":
         render_dashboard()
-    elif page == "New Request":
-        render_new_request()
+
+    elif page == "Business Case":
+        render_business_case(
+            refresh_requests=refresh_requests,
+            navigate=navigate,
+        )
+
     elif page == "Request Detail":
         render_request_detail()
+
     elif page == "Meeting Brief":
         render_meeting_brief()
 
