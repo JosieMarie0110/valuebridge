@@ -1,0 +1,9 @@
+.gcloudignore
+.git/
+venv/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+backup_last_good/
+backups/
