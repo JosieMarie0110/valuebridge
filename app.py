@@ -724,23 +724,30 @@ def render_dashboard() -> None:
             or index
         )
 
-        urgency = request.get("urgency", "Moderate")
+        account_name = (
+            request.get("account")
+            or request.get("account_name")
+            or request.get("customer")
+            or "Account not provided"
+        )
 
-        if urgency in {
-            "Dealer escalation",
-            "Revenue risk",
-            "Member-impacting issue",
-            "Compliance deadline",
-        }:
-            urgency_class = "pill-coral"
-        elif urgency == "High":
-            urgency_class = "pill-orange"
-        else:
-            urgency_class = "pill-green"
+        case_title = (
+            request.get("title")
+            or (
+                f"{account_name} Business Case"
+                if account_name != "Account not provided"
+                else "Untitled Business Case"
+            )
+        )
 
-        impact_type = request.get(
-            "impact_type",
-            "Revenue influenced",
+        stakeholder = (
+            request.get("stakeholder_team")
+            or "Stakeholder not yet assigned"
+        )
+
+        deal_stage = (
+            request.get("deal_stage")
+            or "Stage not provided"
         )
 
         raw_impact_value = request.get(
@@ -756,78 +763,45 @@ def render_dashboard() -> None:
         except (TypeError, ValueError):
             impact_value = 0
 
-        if impact_type == "Revenue influenced":
-            impact_text = (
+        metadata_items = [
+            account_name,
+            deal_stage,
+        ]
+
+        if impact_value > 0:
+            metadata_items.append(
                 f"${impact_value:,.0f} revenue influenced"
-                if impact_value > 0
-                else "Revenue not yet confirmed"
-            )
-        else:
-            impact_text = (
-                f"{impact_value:,.0f} {str(impact_type).lower()}"
             )
 
-        account_name = (
-            request.get("account")
-            or request.get("account_name")
-            or request.get("customer")
-            or "No account assigned"
-        )
-
-        case_title = (
-            request.get("title")
-            or (
-                f"{account_name} Business Case"
-                if account_name != "No account assigned"
-                else "Untitled business case"
-            )
-        )
-
-        stakeholder = (
-            request.get("stakeholder_team")
-            or request.get("recommended_stakeholder")
-            or "Unmapped"
-        )
-
-        deal_stage = request.get(
-            "deal_stage",
-            "Stage not provided",
-        )
+        metadata_text = " · ".join(metadata_items)
 
         with st.container(border=True):
             render_html(
                 f"""
                 <div class="request-card-content">
-                    <div class="request-pills">
-                        <span class="pill pill-purple">
-                            {clean(stakeholder)}
-                        </span>
-
-                        <span class="pill {urgency_class}">
-                            {clean(urgency)}
-                        </span>
-                    </div>
-
                     <div class="request-title">
                         {clean(case_title)}
                     </div>
 
                     <div class="request-meta">
-                        {clean(account_name)}
-                        · {clean(deal_stage)}
-                        · {clean(impact_text)}
+                        {clean(metadata_text)}
+                    </div>
+
+                    <div class="request-meta">
+                        Recommended stakeholder: {clean(stakeholder)}
                     </div>
                 </div>
                 """
             )
 
             if st.button(
-                "Open business case",
+                "Open Business Case",
                 key=f"open_{request_id}",
                 use_container_width=True,
             ):
                 st.session_state.selected_request_index = index
                 navigate("Request Detail")
+
 
 def render_request_detail() -> None:
     render_page_heading(
