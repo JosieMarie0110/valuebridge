@@ -27,6 +27,32 @@ from services.ai_assistant import (
 )
 
 
+INDUSTRY_PROFILES = [
+    "Automotive Payment Platform",
+    "Automotive Finance and F&I",
+    "Lending and Loan Servicing",
+    "Dealer Management and Retail Technology",
+    "Embedded Payments",
+    "Generic B2B SaaS",
+]
+
+
+REQUEST_TYPES = [
+    "Let ValueBridge classify",
+    "Product capability",
+    "Workflow or usability",
+    "Integration or API",
+    "Reporting or analytics",
+    "Payment processing or reconciliation",
+    "Lending or servicing workflow",
+    "Compliance, privacy, or risk",
+    "Customer experience",
+    "Training, configuration, or enablement",
+    "Competitive gap",
+    "Other",
+]
+
+
 DEAL_STAGES = [
     "Discovery",
     "Solution Evaluation",
@@ -44,32 +70,42 @@ OUTPUT_FIELDS = [
     (
         "executive_summary",
         "Executive Summary",
-        "A concise overview of the opportunity and recommended direction.",
+        "A concise overview of the request, impact, and recommended direction.",
     ),
     (
-        "customer_need",
-        "Customer Need",
-        "The need, business problem, and desired outcome.",
+        "customer_request",
+        "Customer Request",
+        "What the customer or partner is asking for and the affected workflow.",
     ),
     (
-        "business_impact",
-        "Business Impact",
-        "The commercial importance, operational effect, and risk of inaction.",
+        "deal_impact",
+        "Deal or Customer Impact",
+        "The known or potential effect on the opportunity, customer, or operation.",
     ),
     (
-        "recommended_stakeholder",
-        "Recommended Stakeholder",
-        "The primary internal stakeholder and why they are the right starting point.",
+        "confirmed_information",
+        "Confirmed Information",
+        "Facts supported by the information provided.",
     ),
     (
-        "recommended_approach",
-        "Recommended Approach",
-        "The recommended internal request, positioning, and next steps.",
+        "not_yet_confirmed",
+        "Not Yet Confirmed",
+        "Important information that remains unknown or requires validation.",
     ),
     (
-        "open_questions",
-        "Open Questions",
-        "Information, assumptions, or dependencies that still need confirmation.",
+        "recommended_internal_owner",
+        "Recommended Internal Owner",
+        "The primary internal team that should review or advance the request.",
+    ),
+    (
+        "decision_or_support_needed",
+        "Decision or Support Needed",
+        "The specific review, decision, ownership, or support Sales needs now.",
+    ),
+    (
+        "recommended_next_step",
+        "Recommended Next Step",
+        "One practical action to move the request or opportunity forward.",
     ),
 ]
 
@@ -85,6 +121,9 @@ def _initialize_state() -> None:
         "business_case_id": None,
         "generated_case": {},
         "discovery_questions": [],
+        "case_industry_profile": INDUSTRY_PROFILES[0],
+        "case_request_type": REQUEST_TYPES[0],
+        "case_classified_request_type": "",
         "case_account_name": "",
         "case_deal_stage": DEAL_STAGES[0],
         "case_revenue_impact": 0.0,
@@ -142,6 +181,25 @@ def _build_case_input() -> dict[str, Any]:
         decision_date_value = str(decision_date)
 
     return {
+        "industry_profile": st.session_state.get(
+            "case_industry_profile",
+            INDUSTRY_PROFILES[0],
+        ),
+        "request_type": (
+            st.session_state.get(
+                "case_classified_request_type",
+                "",
+            )
+            if st.session_state.get(
+                "case_request_type",
+                REQUEST_TYPES[0],
+            ) == "Let ValueBridge classify"
+            else st.session_state.get(
+                "case_request_type",
+                REQUEST_TYPES[0],
+            )
+        )
+        or "Let ValueBridge classify",
         "account_name": str(
             st.session_state.get(
                 "case_account_name",
@@ -180,6 +238,12 @@ def _review_information() -> None:
             st.error(error)
         return
 
+    if st.session_state.get(
+        "case_request_type",
+        REQUEST_TYPES[0],
+    ) != "Let ValueBridge classify":
+        st.session_state.case_classified_request_type = ""
+
     case_input = _build_case_input()
 
     try:
@@ -189,6 +253,18 @@ def _review_information() -> None:
             questions = generate_discovery_questions(
                 case_input
             )
+
+            classified_type = case_input.get(
+                "request_type"
+            )
+
+            if (
+                classified_type
+                and classified_type != "Let ValueBridge classify"
+            ):
+                st.session_state.case_classified_request_type = (
+                    classified_type
+                )
 
     except Exception as exc:
         st.error(
@@ -267,7 +343,7 @@ def _generate_case() -> None:
 
     try:
         with st.spinner(
-            "Creating the business case..."
+            "Creating the Sales-to-Product brief..."
         ):
             generated_case = analyze_business_case(
                 case_input
@@ -275,14 +351,14 @@ def _generate_case() -> None:
 
     except Exception as exc:
         st.error(
-            "ValueBridge could not generate the business case: "
+            "ValueBridge could not generate the brief: "
             f"{exc}"
         )
         return
 
     if not isinstance(generated_case, dict):
         st.error(
-            "ValueBridge returned an invalid business case."
+            "ValueBridge returned an invalid brief."
         )
         return
 
@@ -330,14 +406,11 @@ def _validate_output(
 ) -> list[str]:
     required_sections = {
         "executive_summary": "Executive Summary",
-        "customer_need": "Customer Need",
-        "business_impact": "Business Impact",
-        "recommended_stakeholder": (
-            "Recommended Stakeholder"
-        ),
-        "recommended_approach": (
-            "Recommended Approach"
-        ),
+        "customer_request": "Customer Request",
+        "deal_impact": "Deal or Customer Impact",
+        "recommended_internal_owner": "Recommended Internal Owner",
+        "decision_or_support_needed": "Decision or Support Needed",
+        "recommended_next_step": "Recommended Next Step",
     }
 
     errors: list[str] = []
@@ -362,6 +435,19 @@ def _build_record(
         _build_discovery_answers()
     )
 
+    owner_text = edited_output.get(
+        "recommended_internal_owner",
+        "",
+    )
+
+    owner_team = owner_text.split(
+        ":",
+        1,
+    )[0].split(
+        "-",
+        1,
+    )[0].strip()
+
     return {
         "id": st.session_state.get(
             "business_case_id"
@@ -370,6 +456,10 @@ def _build_record(
             "business_case_id"
         ),
         **case_input,
+        "title": (
+            f"{case_input.get('account_name') or 'Untitled'} "
+            "Sales-to-Product Brief"
+        ),
         "discovery_questions": (
             st.session_state.get(
                 "discovery_questions",
@@ -378,24 +468,40 @@ def _build_record(
         ),
         "discovery_answers": discovery_answers,
         "output": edited_output,
-        "executive_summary": edited_output[
-            "executive_summary"
-        ],
-        "customer_need": edited_output[
-            "customer_need"
-        ],
-        "business_impact": edited_output[
-            "business_impact"
-        ],
-        "recommended_stakeholder": edited_output[
-            "recommended_stakeholder"
-        ],
-        "recommended_approach": edited_output[
-            "recommended_approach"
-        ],
-        "open_questions": edited_output[
-            "open_questions"
-        ],
+        **edited_output,
+        "stakeholder_team": (
+            owner_team
+            or "Product"
+        ),
+        "stakeholder_role": (
+            owner_team
+            or "Product"
+        ),
+        "stakeholder_rationale": owner_text,
+        "stakeholder_ask": edited_output.get(
+            "decision_or_support_needed",
+            "",
+        ),
+        "recommended_approach": edited_output.get(
+            "recommended_next_step",
+            "",
+        ),
+        "customer_need": edited_output.get(
+            "customer_request",
+            "",
+        ),
+        "business_impact": edited_output.get(
+            "deal_impact",
+            "",
+        ),
+        "commercial_impact": edited_output.get(
+            "deal_impact",
+            "",
+        ),
+        "open_questions": edited_output.get(
+            "not_yet_confirmed",
+            "",
+        ),
         "status": "Saved",
     }
 
@@ -424,7 +530,7 @@ def _save_case(
 
     except Exception as exc:
         st.error(
-            "ValueBridge could not save the business case: "
+            "ValueBridge could not save the brief: "
             f"{exc}"
         )
         return None
@@ -477,7 +583,7 @@ def _create_pdf_filename() -> str:
     case_title = str(
         st.session_state.get(
             "case_account_name",
-            "Business Case",
+            "Sales-to-Product Brief",
         )
     ).strip()
 
@@ -496,7 +602,7 @@ def _create_pdf_filename() -> str:
     )
 
     return (
-        f"{safe_title or 'Business_Case'}"
+        f"{safe_title or 'Sales_to_Product_Brief'}"
         "_ValueBridge_Briefing.pdf"
     )
 
@@ -513,7 +619,7 @@ def _create_pdf(
         leftMargin=0.65 * inch,
         topMargin=0.65 * inch,
         bottomMargin=0.65 * inch,
-        title="ValueBridge Business Case Briefing",
+        title="ValueBridge Sales-to-Product Brief",
         author="ValueBridge",
     )
 
@@ -583,7 +689,7 @@ def _create_pdf(
 
     case_title = st.session_state.get(
         "case_account_name",
-        "Untitled Business Case",
+        "Untitled Sales-to-Product Brief",
     )
 
     revenue = st.session_state.get(
@@ -622,7 +728,7 @@ def _create_pdf(
 
     story = [
         Paragraph(
-            "ValueBridge Business Case Briefing",
+            "ValueBridge Sales-to-Product Brief",
             title_style,
         ),
         Paragraph(
@@ -941,7 +1047,7 @@ def _render_progress() -> None:
     steps = [
         "Describe Situation",
         "Complete Discovery",
-        "Review Business Case",
+        "Review Brief",
         "Save & Create PDF",
     ]
 
@@ -975,14 +1081,36 @@ def _render_input_form() -> None:
         border=True
     ):
         st.subheader(
-            "Describe the Sales Situation"
+            "Describe the Customer Request or Deal Blocker"
         )
 
         st.write(
-            "Start with what you know. ValueBridge will review the "
-            "information and ask only the questions needed to build a "
-            "more complete business case."
+            "Start with what you know. ValueBridge will classify the request, "
+            "ask up to three focused questions, and prepare a "
+            "decision-ready Sales-to-Product brief."
         )
+
+        profile_row = st.columns(
+            2
+        )
+
+        with profile_row[0]:
+            st.selectbox(
+                "Industry profile",
+                options=INDUSTRY_PROFILES,
+                key="case_industry_profile",
+            )
+
+        with profile_row[1]:
+            st.selectbox(
+                "Request category",
+                options=REQUEST_TYPES,
+                key="case_request_type",
+                help=(
+                    "Leave this on automatic classification when the category "
+                    "is not yet clear."
+                ),
+            )
 
         row_one = st.columns(
             [1.4, 1]
@@ -1031,8 +1159,8 @@ def _render_input_form() -> None:
             key="case_situation",
             height=180,
             placeholder=(
-                "Describe the customer request, business challenge, "
-                "deal obstacle, desired capability, or concern."
+                "Describe the customer request, deal blocker, workflow issue, "
+                "competitive gap, desired capability, or concern."
             ),
         )
 
@@ -1041,8 +1169,8 @@ def _render_input_form() -> None:
             key="case_evidence",
             height=130,
             placeholder=(
-                "Add customer comments, metrics, deadlines, competitive "
-                "pressure, current workarounds, or known constraints."
+                "Add customer comments, affected users, metrics, deadlines, competitive "
+                "pressure, current workarounds, systems, or known constraints."
             ),
         )
 
@@ -1056,13 +1184,31 @@ def _render_input_form() -> None:
 
 def _render_discovery() -> None:
     st.subheader(
-        "Complete the Picture"
+        "Focused Discovery"
     )
 
     st.write(
         "Answer what you know. Questions may be left blank when the "
         "information has not yet been confirmed."
     )
+
+    selected_type = st.session_state.get(
+        "case_request_type",
+        REQUEST_TYPES[0],
+    )
+
+    classified_type = st.session_state.get(
+        "case_classified_request_type",
+        "",
+    )
+
+    if (
+        selected_type == "Let ValueBridge classify"
+        and classified_type
+    ):
+        st.info(
+            f"ValueBridge classified this as: {classified_type}"
+        )
 
     questions = st.session_state.get(
         "discovery_questions",
@@ -1074,7 +1220,7 @@ def _render_discovery() -> None:
             border=True
         ):
             st.success(
-                "The information provided is sufficient to create the draft."
+                "The information provided is sufficient to create the brief."
             )
 
     for number, question in enumerate(
@@ -1117,7 +1263,7 @@ def _render_discovery() -> None:
             )
 
     if st.button(
-        "Create Business Case",
+        "Create Brief",
         type="primary",
         use_container_width=True,
     ):
@@ -1134,13 +1280,13 @@ def _render_case_header() -> None:
 
         with left:
             st.caption(
-                "BUSINESS CASE DRAFT"
+                "SALES-TO-PRODUCT BRIEF"
             )
 
             st.subheader(
                 st.session_state.get(
                     "case_account_name",
-                    "Untitled Business Case",
+                    "Untitled Sales-to-Product Brief",
                 )
             )
 
@@ -1264,11 +1410,11 @@ def _render_output(
     st.divider()
 
     st.subheader(
-        "Review and Edit"
+        "Review and Edit the Brief"
     )
 
     st.write(
-        "Review the generated business case and revise any section "
+        "Review the generated brief and revise any section "
         "before saving the final briefing."
     )
 
@@ -1302,7 +1448,7 @@ def _render_output(
 
     if pdf_bytes and pdf_name:
         st.success(
-            "The business case was saved and the PDF briefing is ready."
+            "The brief was saved and the PDF is ready."
         )
 
         st.download_button(
@@ -1322,12 +1468,12 @@ def render_business_case(
     _initialize_state()
 
     st.title(
-        "Business Case"
+        "Sales-to-Product Brief"
     )
 
     st.caption(
-        "Turn customer needs and commercial priorities into a formal, "
-        "decision-ready internal business case."
+        "Turn automotive fintech customer requests and deal blockers into a "
+        "decision-ready Sales-to-Product brief."
     )
 
     _render_progress()
