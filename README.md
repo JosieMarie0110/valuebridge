@@ -1,6 +1,6 @@
 # ValueBridge
 
-ValueBridge is a Streamlit app designed to help AutoPayplus sales and dealer-facing teams turn customer, dealer, and member needs into clear cross-functional requests.
+ValueBridge is a Streamlit application designed for the  to help bridge communication gaps between Sales, dealer-facing teams, Operations, and technical stakeholders.
 
 The app guides users through defining the problem, measuring the business impact, selecting the right stakeholder, and preparing a meeting brief.
 
